@@ -62,12 +62,23 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<OpenMeteoPoint>
 
   const hourly: HourlyForecastPoint[] = [];
   if (json.hourly?.time) {
-    const cutoff = Date.now() - 60 * 60 * 1000;
-    for (let i = 0; i < json.hourly.time.length && hourly.length < 24; i++) {
-      const time = json.hourly.time[i];
-      if (new Date(time).getTime() < cutoff) continue;
+    // Both current.time and hourly.time are naive "YYYY-MM-DDTHH:mm"
+    // strings in the location's own local time (timezone=auto above).
+    // Compare them as strings/prefixes rather than via `new Date(...)`,
+    // which would parse using the *server's* local timezone (UTC on
+    // Vercel, but e.g. Pacific on a dev machine) and silently shift
+    // the result depending on where the code happens to run.
+    const currentHourPrefix = json.current?.time?.slice(0, 13); // "YYYY-MM-DDTHH"
+    const startIndex = currentHourPrefix
+      ? Math.max(
+          0,
+          json.hourly.time.findIndex((t) => t.slice(0, 13) >= currentHourPrefix)
+        )
+      : 0;
+
+    for (let i = startIndex; i < json.hourly.time.length && hourly.length < 24; i++) {
       hourly.push({
-        time,
+        time: json.hourly.time[i],
         tempF: json.hourly.temperature_2m?.[i] ?? null,
         windSpeedMph: json.hourly.wind_speed_10m?.[i] ?? null,
         precipProbabilityPct: json.hourly.precipitation_probability?.[i] ?? null,
