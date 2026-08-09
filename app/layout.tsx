@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SF Microclimate Weather",
+  title: "Fogcast",
   description:
-    "Hyperlocal weather for San Francisco and Marin County, blended from PurpleAir, Open-Meteo, NDBC, and NWS.",
+    "One city with dozens of microclimates. SF changes its mind about the weather every hour and every couple blocks. We're keeping tabs in real-time so you don't have to.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SF Weather",
+    title: "Fogcast",
   },
   icons: {
     icon: [

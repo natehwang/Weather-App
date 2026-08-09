@@ -199,11 +199,11 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <h1>SF Microclimate Weather</h1>
+        <h1>Fogcast</h1>
         <p>
-          Hyperlocal temperature, humidity, and air quality blended from
-          nearby PurpleAir sensors, corrected for the sensors&apos; known
-          temperature/humidity bias.
+          One city with dozens of microclimates. SF changes its mind about
+          the weather every hour and every couple blocks. We&apos;re keeping
+          tabs in real-time so you don&apos;t have to.
         </p>
 
         <button className={styles.primaryButton} onClick={useMyLocation} disabled={loading}>

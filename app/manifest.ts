@@ -2,9 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SF Microclimate Weather",
-    short_name: "SF Weather",
-    description: "Hyperlocal weather for San Francisco and Marin County, tuned for cyclists.",
+    name: "Fogcast",
+    short_name: "Fogcast",
+    description:
+      "One city with dozens of microclimates. SF changes its mind about the weather every hour and every couple blocks. We're keeping tabs in real-time so you don't have to.",
     start_url: "/",
     display: "standalone",
     background_color: "#fafafa",
