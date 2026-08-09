@@ -75,11 +75,23 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .presetButton:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.presetButtonActive {
+  background: #fff;
+  border-color: #fff;
+  color: #111;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .error {

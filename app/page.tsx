@@ -68,16 +68,20 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [stationMarkers, setStationMarkers] = useState<StationMarker[]>([]);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
   const [destData, setDestData] = useState<WeatherResponse | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareError, setCompareError] = useState<string | null>(null);
+  const [selectedDestPreset, setSelectedDestPreset] = useState<string | null>(null);
 
-  async function loadWeather(targetLat: number, targetLng: number) {
+  async function loadWeather(targetLat: number, targetLng: number, presetLabel: string | null = null) {
     setLoading(true);
     setError(null);
     setSelectedPoint({ lat: targetLat, lng: targetLng });
+    setSelectedPreset(presetLabel);
     setDestData(null); // start point changed; any prior comparison is stale
+    setSelectedDestPreset(null);
     try {
       const [weatherRes, stationsRes] = await Promise.all([
         fetch(`/api/weather?lat=${targetLat}&lng=${targetLng}`),
@@ -122,13 +126,14 @@ export default function Home() {
     );
   }
 
-  async function loadDestination(targetLat: number, targetLng: number) {
+  async function loadDestination(targetLat: number, targetLng: number, presetLabel: string) {
     if (!data) {
       setCompareError("Pick a start point above first.");
       return;
     }
     setCompareLoading(true);
     setCompareError(null);
+    setSelectedDestPreset(presetLabel);
     try {
       const res = await fetch(`/api/weather?lat=${targetLat}&lng=${targetLng}`);
       const body = await res.json();
@@ -137,6 +142,7 @@ export default function Home() {
     } catch (err) {
       setCompareError(err instanceof Error ? err.message : "Failed to load destination weather");
       setDestData(null);
+      setSelectedDestPreset(null);
     } finally {
       setCompareLoading(false);
     }
@@ -191,8 +197,10 @@ export default function Home() {
           {PRESETS.map((preset) => (
             <button
               key={preset.label}
-              className={styles.presetButton}
-              onClick={() => loadWeather(preset.lat, preset.lng)}
+              className={`${styles.presetButton} ${
+                selectedPreset === preset.label ? styles.presetButtonActive : ""
+              }`}
+              onClick={() => loadWeather(preset.lat, preset.lng, preset.label)}
               disabled={loading}
             >
               {preset.label}
@@ -318,8 +326,10 @@ export default function Home() {
               {PRESETS.map((preset) => (
                 <button
                   key={preset.label}
-                  className={styles.presetButton}
-                  onClick={() => loadDestination(preset.lat, preset.lng)}
+                  className={`${styles.presetButton} ${
+                    selectedDestPreset === preset.label ? styles.presetButtonActive : ""
+                  }`}
+                  onClick={() => loadDestination(preset.lat, preset.lng, preset.label)}
                   disabled={compareLoading}
                 >
                   {preset.label}
