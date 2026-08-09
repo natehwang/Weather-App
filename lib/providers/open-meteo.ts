@@ -47,6 +47,10 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<OpenMeteoPoint>
     temperature_unit: "fahrenheit",
     wind_speed_unit: "mph",
     forecast_days: "2",
+    // Without this, Open-Meteo defaults to GMT and returns naive time
+    // strings that get misread as local time, shifting the forecast by
+    // the timezone offset (e.g. +7h in Pacific summer time).
+    timezone: "auto",
   });
 
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);

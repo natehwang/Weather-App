@@ -50,6 +50,7 @@ const PRESETS = [
   { label: "Mission District", lat: 37.7599, lng: -122.4148 },
   { label: "Downtown / SOMA", lat: 37.7749, lng: -122.4194 },
   { label: "Twin Peaks", lat: 37.7544, lng: -122.4477 },
+  { label: "Golden Gate Bridge", lat: 37.8079, lng: -122.4783 },
   { label: "Marin Headlands (Hawk Hill)", lat: 37.8324, lng: -122.4934 },
   { label: "Sausalito", lat: 37.8591, lng: -122.4853 },
   { label: "Tiburon", lat: 37.8735, lng: -122.4569 },
