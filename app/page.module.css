@@ -4,13 +4,15 @@
 
   --text-primary: #000;
   --text-secondary: #666;
+  --border: #e5e5e5;
+  --error: #b3261e;
 
   display: flex;
   flex: 1;
   min-height: 100vh;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   font-family: var(--font-geist-sans);
   background-color: var(--background);
 }
@@ -22,7 +24,7 @@
   width: 100%;
   max-width: 640px;
   gap: 16px;
-  padding: 60px;
+  padding: 60px 24px;
 }
 
 .main h1 {
@@ -38,13 +40,127 @@
   color: var(--text-secondary);
 }
 
+.primaryButton {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--text-primary);
+  color: var(--background);
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.manualForm {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.manualForm input {
+  font-family: var(--font-geist-mono);
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  width: 140px;
+}
+
+.manualForm button {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.manualForm button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.presetButton {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.presetButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  font-size: 14px;
+  color: var(--error);
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.tempBig {
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -2px;
+  color: var(--text-primary);
+}
+
+.grid {
+  display: flex;
+  gap: 32px;
+}
+
+.gridItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
 .status {
   font-family: var(--font-geist-mono);
   font-size: 13px;
   color: var(--text-secondary);
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 12px 16px;
+}
+
+.footer {
+  margin-top: 24px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,9 +170,12 @@
 
     --text-primary: #ededed;
     --text-secondary: #999;
+    --border: #333;
+    --error: #ff6b60;
   }
 
-  .status {
-    border-color: #333;
+  .primaryButton {
+    background: var(--text-primary);
+    color: #000;
   }
 }
