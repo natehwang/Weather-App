@@ -5,6 +5,9 @@ import dynamic from "next/dynamic";
 import styles from "./page.module.css";
 import { aqiCategory } from "@/lib/aqi";
 import { degreesToCompass } from "@/lib/compass";
+import { kitRecommendation } from "@/lib/kit";
+import { bearingDeg } from "@/lib/geo";
+import { computeWindComponents, describeWindComponents } from "@/lib/wind-component";
 import type { StationMarker } from "@/components/weather-map";
 
 const WeatherMap = dynamic(() => import("@/components/weather-map"), {
@@ -61,6 +64,12 @@ export default function Home() {
   const [mapCenter, setMapCenter] = useState(DEFAULT_MAP_CENTER);
   const [stationMarkers, setStationMarkers] = useState<StationMarker[]>([]);
 
+  const [destLat, setDestLat] = useState("");
+  const [destLng, setDestLng] = useState("");
+  const [destData, setDestData] = useState<WeatherResponse | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+
   async function loadWeather(targetLat: number, targetLng: number) {
     setLoading(true);
     setError(null);
@@ -68,6 +77,7 @@ export default function Home() {
     setLat(String(targetLat));
     setLng(String(targetLng));
     setMapCenter({ lat: targetLat, lng: targetLng });
+    setDestData(null); // start point changed; any prior comparison is stale
     try {
       const [weatherRes, stationsRes] = await Promise.all([
         fetch(`/api/weather?lat=${targetLat}&lng=${targetLng}`),
@@ -121,6 +131,69 @@ export default function Home() {
     }
     loadWeather(parsedLat, parsedLng);
   }
+
+  async function loadDestination(targetLat: number, targetLng: number) {
+    if (!data) {
+      setCompareError("Set a start point above first.");
+      return;
+    }
+    setCompareLoading(true);
+    setCompareError(null);
+    setDestLat(String(targetLat));
+    setDestLng(String(targetLng));
+    try {
+      const res = await fetch(`/api/weather?lat=${targetLat}&lng=${targetLng}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
+      setDestData(body);
+    } catch (err) {
+      setCompareError(err instanceof Error ? err.message : "Failed to load destination weather");
+    } finally {
+      setCompareLoading(false);
+    }
+  }
+
+  function handleCompareSubmit(e: FormEvent) {
+    e.preventDefault();
+    const parsedLat = parseFloat(destLat);
+    const parsedLng = parseFloat(destLng);
+    if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
+      setCompareError("Enter valid destination latitude and longitude.");
+      return;
+    }
+    loadDestination(parsedLat, parsedLng);
+  }
+
+  const comparison = (() => {
+    if (
+      data == null ||
+      destData == null ||
+      data.wind?.speedMph == null ||
+      data.wind.directionDeg == null ||
+      destData.wind?.speedMph == null ||
+      destData.wind.directionDeg == null
+    ) {
+      return null;
+    }
+
+    const outBearing = bearingDeg(
+      data.location.lat,
+      data.location.lng,
+      destData.location.lat,
+      destData.location.lng
+    );
+    const returnBearing = (outBearing + 180) % 360;
+    const outWind = computeWindComponents(data.wind.directionDeg, data.wind.speedMph, outBearing);
+    const returnWind = computeWindComponents(destData.wind.directionDeg, destData.wind.speedMph, returnBearing);
+
+    const worstFeelsLike =
+      data.feelsLikeF != null && destData.feelsLikeF != null
+        ? Math.min(data.feelsLikeF, destData.feelsLikeF)
+        : (data.feelsLikeF ?? destData.feelsLikeF);
+    const worstWind = Math.max(data.wind.speedMph, destData.wind.speedMph);
+
+    return { outBearing, returnBearing, outWind, returnWind, kit: kitRecommendation(worstFeelsLike, worstWind) };
+  })();
 
   return (
     <div className={styles.page}>
@@ -224,6 +297,10 @@ export default function Home() {
                 <span className={styles.label}>Gusts</span>
                 <span>{data.wind?.gustMph != null ? `${Math.round(data.wind.gustMph)} mph` : "—"}</span>
               </div>
+              <div className={styles.gridItem}>
+                <span className={styles.label}>Kit</span>
+                <span>{kitRecommendation(data.feelsLikeF, data.wind?.speedMph ?? null)}</span>
+              </div>
             </div>
 
             {data.hourly.length > 0 && (
@@ -263,6 +340,90 @@ export default function Home() {
                 ` · nearest ${data.nearestStationDistanceMi} mi away`}
               {data.tempSource === "open-meteo" && " · temp from Open-Meteo model (no nearby stations)"}
             </div>
+          </div>
+        )}
+
+        {data && (
+          <div className={styles.compareSection}>
+            <h2 className={styles.compareTitle}>Compare to a destination</h2>
+            <p className={styles.compareHint}>
+              See conditions at the other end of your ride and the headwind/tailwind for the way
+              out and back.
+            </p>
+
+            <form className={styles.manualForm} onSubmit={handleCompareSubmit}>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="Dest. latitude"
+                value={destLat}
+                onChange={(e) => setDestLat(e.target.value)}
+              />
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="Dest. longitude"
+                value={destLng}
+                onChange={(e) => setDestLng(e.target.value)}
+              />
+              <button type="submit" disabled={compareLoading}>
+                Compare
+              </button>
+            </form>
+
+            <div className={styles.presets}>
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  className={styles.presetButton}
+                  onClick={() => loadDestination(preset.lat, preset.lng)}
+                  disabled={compareLoading}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {compareError && <div className={styles.error}>{compareError}</div>}
+
+            {destData && (
+              <div className={styles.compareGrid}>
+                <div className={styles.compareCard}>
+                  <span className={styles.label}>Start</span>
+                  <div className={styles.compareTemp}>
+                    {data.tempF != null ? `${data.tempF.toFixed(0)}°F` : "—"}
+                  </div>
+                  <span>
+                    Feels {data.feelsLikeF != null ? `${data.feelsLikeF.toFixed(0)}°F` : "—"}
+                    {data.fog?.likely ? " · fog likely" : ""}
+                  </span>
+                </div>
+                <div className={styles.compareCard}>
+                  <span className={styles.label}>Destination</span>
+                  <div className={styles.compareTemp}>
+                    {destData.tempF != null ? `${destData.tempF.toFixed(0)}°F` : "—"}
+                  </div>
+                  <span>
+                    Feels {destData.feelsLikeF != null ? `${destData.feelsLikeF.toFixed(0)}°F` : "—"}
+                    {destData.fog?.likely ? " · fog likely" : ""}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {comparison && (
+              <div className={styles.compareWind}>
+                <div>
+                  Heading {degreesToCompass(comparison.outBearing)} out:{" "}
+                  {describeWindComponents(comparison.outWind)}
+                </div>
+                <div>
+                  Heading {degreesToCompass(comparison.returnBearing)} back:{" "}
+                  {describeWindComponents(comparison.returnWind)}
+                </div>
+                <div className={styles.compareKit}>Pack: {comparison.kit}</div>
+              </div>
+            )}
           </div>
         )}
 

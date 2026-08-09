@@ -238,6 +238,64 @@
   padding: 8px 12px;
 }
 
+.compareSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.compareTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.compareHint {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+  margin-top: -8px;
+}
+
+.compareGrid {
+  display: flex;
+  gap: 16px;
+}
+
+.compareCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.compareTemp {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.compareWind {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.compareKit {
+  font-weight: 500;
+}
+
 .footer {
   margin-top: 24px;
   font-size: 12px;

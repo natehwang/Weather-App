@@ -30,3 +30,15 @@ export function boundingBoxFromRadiusMi(lat: number, lng: number, radiusMi: numb
     seLng: lng + lngDelta,
   };
 }
+
+/** Initial great-circle bearing from point 1 to point 2, in degrees (0=N, 90=E). */
+export function bearingDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const toDeg = (rad: number) => (rad * 180) / Math.PI;
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+  const deltaLambda = toRad(lng2 - lng1);
+  const y = Math.sin(deltaLambda) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
