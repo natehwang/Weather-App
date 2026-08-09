@@ -3,15 +3,27 @@
 import { useState, type FormEvent } from "react";
 import styles from "./page.module.css";
 import { aqiCategory } from "@/lib/aqi";
+import { degreesToCompass } from "@/lib/compass";
+
+interface HourlyForecastPoint {
+  time: string;
+  tempF: number | null;
+  windSpeedMph: number | null;
+  precipProbabilityPct: number | null;
+}
 
 interface WeatherResponse {
   location: { lat: number; lng: number };
   tempF: number | null;
+  tempSource: "stations" | "open-meteo" | null;
   humidityPct: number | null;
   aqiPm25: number | null;
   stationCount: number;
   nearestStationDistanceMi: number | null;
-  searchRadiusMi: number;
+  searchRadiusMi: number | null;
+  feelsLikeF: number | null;
+  wind: { speedMph: number | null; directionDeg: number | null; gustMph: number | null } | null;
+  hourly: HourlyForecastPoint[];
   sources: string[];
 }
 
@@ -129,8 +141,13 @@ export default function Home() {
 
         {data && (
           <div className={styles.results}>
-            <div className={styles.tempBig}>
-              {data.tempF != null ? `${data.tempF.toFixed(1)}°F` : "No data"}
+            <div className={styles.tempRow}>
+              <div className={styles.tempBig}>
+                {data.tempF != null ? `${data.tempF.toFixed(1)}°F` : "No data"}
+              </div>
+              {data.feelsLikeF != null && data.feelsLikeF !== data.tempF && (
+                <div className={styles.feelsLike}>Feels like {data.feelsLikeF.toFixed(0)}°F</div>
+              )}
             </div>
             <div className={styles.grid}>
               <div className={styles.gridItem}>
@@ -143,19 +160,52 @@ export default function Home() {
                   {data.aqiPm25 != null ? `${data.aqiPm25} (${aqiCategory(data.aqiPm25)})` : "—"}
                 </span>
               </div>
+              <div className={styles.gridItem}>
+                <span className={styles.label}>Wind</span>
+                <span>
+                  {data.wind?.speedMph != null
+                    ? `${Math.round(data.wind.speedMph)} mph${
+                        data.wind.directionDeg != null ? ` ${degreesToCompass(data.wind.directionDeg)}` : ""
+                      }`
+                    : "—"}
+                </span>
+              </div>
+              <div className={styles.gridItem}>
+                <span className={styles.label}>Gusts</span>
+                <span>{data.wind?.gustMph != null ? `${Math.round(data.wind.gustMph)} mph` : "—"}</span>
+              </div>
             </div>
+
+            {data.hourly.length > 0 && (
+              <div className={styles.hourlyStrip}>
+                {data.hourly.slice(0, 8).map((h) => (
+                  <div key={h.time} className={styles.hourlyItem}>
+                    <span className={styles.label}>
+                      {new Date(h.time).toLocaleTimeString([], { hour: "numeric" })}
+                    </span>
+                    <span>{h.tempF != null ? `${Math.round(h.tempF)}°` : "—"}</span>
+                    <span className={styles.hourlyWind}>
+                      {h.windSpeedMph != null ? `${Math.round(h.windSpeedMph)} mph` : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className={styles.status}>
-              {data.stationCount} station{data.stationCount === 1 ? "" : "s"} within{" "}
-              {data.searchRadiusMi} mi
+              {data.stationCount} station{data.stationCount === 1 ? "" : "s"}
+              {data.searchRadiusMi != null && ` within ${data.searchRadiusMi} mi`}
               {data.nearestStationDistanceMi != null &&
                 ` · nearest ${data.nearestStationDistanceMi} mi away`}
+              {data.tempSource === "open-meteo" && " · temp from Open-Meteo model (no nearby stations)"}
             </div>
           </div>
         )}
 
         <footer className={styles.footer}>
-          Air quality and temperature data from PurpleAir sensors, corrected
-          for known sensor bias (raw temperature −8°F, raw humidity +4%).
+          Temperature, humidity, and AQI from PurpleAir sensors, corrected
+          for known sensor bias (raw temperature −8°F, raw humidity +4%). Wind
+          and forecast data by Open-Meteo.com (CC BY 4.0).
         </footer>
       </main>
     </div>

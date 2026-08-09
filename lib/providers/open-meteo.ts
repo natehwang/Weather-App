@@ -1,0 +1,89 @@
+import { getCached, roundCoord } from "@/lib/cache";
+
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
+export interface HourlyForecastPoint {
+  time: string;
+  tempF: number | null;
+  windSpeedMph: number | null;
+  precipProbabilityPct: number | null;
+}
+
+export interface OpenMeteoPoint {
+  tempF: number | null;
+  windSpeedMph: number | null;
+  windDirectionDeg: number | null;
+  windGustMph: number | null;
+  visibilityM: number | null;
+  cloudCoverPct: number | null;
+  observedAt: string | null;
+  hourly: HourlyForecastPoint[];
+}
+
+interface OpenMeteoResponse {
+  current?: {
+    time: string;
+    temperature_2m?: number;
+    wind_speed_10m?: number;
+    wind_direction_10m?: number;
+    wind_gusts_10m?: number;
+    visibility?: number;
+    cloud_cover?: number;
+  };
+  hourly?: {
+    time: string[];
+    temperature_2m?: number[];
+    wind_speed_10m?: number[];
+    precipitation_probability?: number[];
+  };
+}
+
+async function fetchOpenMeteo(lat: number, lng: number): Promise<OpenMeteoPoint> {
+  const params = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lng),
+    current: "temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover",
+    hourly: "temperature_2m,wind_speed_10m,precipitation_probability",
+    temperature_unit: "fahrenheit",
+    wind_speed_unit: "mph",
+    forecast_days: "2",
+  });
+
+  const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Open-Meteo request failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const json = (await res.json()) as OpenMeteoResponse;
+
+  const hourly: HourlyForecastPoint[] = [];
+  if (json.hourly?.time) {
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    for (let i = 0; i < json.hourly.time.length && hourly.length < 24; i++) {
+      const time = json.hourly.time[i];
+      if (new Date(time).getTime() < cutoff) continue;
+      hourly.push({
+        time,
+        tempF: json.hourly.temperature_2m?.[i] ?? null,
+        windSpeedMph: json.hourly.wind_speed_10m?.[i] ?? null,
+        precipProbabilityPct: json.hourly.precipitation_probability?.[i] ?? null,
+      });
+    }
+  }
+
+  return {
+    tempF: json.current?.temperature_2m ?? null,
+    windSpeedMph: json.current?.wind_speed_10m ?? null,
+    windDirectionDeg: json.current?.wind_direction_10m ?? null,
+    windGustMph: json.current?.wind_gusts_10m ?? null,
+    visibilityM: json.current?.visibility ?? null,
+    cloudCoverPct: json.current?.cloud_cover ?? null,
+    observedAt: json.current?.time ?? null,
+    hourly,
+  };
+}
+
+export function getOpenMeteoForecast(lat: number, lng: number): Promise<OpenMeteoPoint> {
+  const cacheKey = `open-meteo:${roundCoord(lat)},${roundCoord(lng)}`;
+  return getCached(cacheKey, CACHE_TTL_MS, () => fetchOpenMeteo(lat, lng));
+}

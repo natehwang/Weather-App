@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchNearbyStations } from "@/lib/aggregate";
 import { blendObservations } from "@/lib/interpolate";
+import { getOpenMeteoForecast } from "@/lib/providers/open-meteo";
+import { windChillF } from "@/lib/wind-chill";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -18,28 +20,53 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  let stations;
-  let radiusUsedMi;
-  try {
-    ({ stations, radiusUsedMi } = await fetchNearbyStations(lat, lng));
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to fetch station data" },
-      { status: 502 }
-    );
+  const [stationsResult, openMeteoResult] = await Promise.allSettled([
+    fetchNearbyStations(lat, lng),
+    getOpenMeteoForecast(lat, lng),
+  ]);
+
+  if (stationsResult.status === "rejected" && openMeteoResult.status === "rejected") {
+    return NextResponse.json({ error: "All weather providers failed to respond" }, { status: 502 });
   }
+
+  const stations = stationsResult.status === "fulfilled" ? stationsResult.value.stations : [];
+  const radiusUsedMi = stationsResult.status === "fulfilled" ? stationsResult.value.radiusUsedMi : null;
+  const openMeteo = openMeteoResult.status === "fulfilled" ? openMeteoResult.value : null;
 
   const blended = blendObservations(stations, lat, lng);
 
+  // Prefer station-interpolated temp; fall back to the Open-Meteo model point
+  // when no nearby stations reported (e.g. deep in the Headlands).
+  const tempF = blended.tempF ?? openMeteo?.tempF ?? null;
+  const tempSource: "stations" | "open-meteo" | null =
+    blended.tempF != null ? "stations" : openMeteo?.tempF != null ? "open-meteo" : null;
+
+  const windSpeedMph = openMeteo?.windSpeedMph ?? null;
+  const feelsLikeF =
+    tempF != null && windSpeedMph != null ? Math.round(windChillF(tempF, windSpeedMph) * 10) / 10 : tempF;
+
   return NextResponse.json({
     location: { lat, lng },
-    tempF: blended.tempF,
+    tempF,
+    tempSource,
     humidityPct: blended.humidityPct,
     aqiPm25: blended.aqiPm25,
     stationCount: blended.stationCount,
     nearestStationDistanceMi:
       blended.nearestStationDistanceMi != null ? Math.round(blended.nearestStationDistanceMi * 100) / 100 : null,
     searchRadiusMi: radiusUsedMi,
-    sources: ["purpleair"],
+    feelsLikeF,
+    wind: openMeteo
+      ? {
+          speedMph: openMeteo.windSpeedMph,
+          directionDeg: openMeteo.windDirectionDeg,
+          gustMph: openMeteo.windGustMph,
+        }
+      : null,
+    hourly: openMeteo?.hourly ?? [],
+    sources: [
+      ...(stations.length > 0 ? ["purpleair"] : []),
+      ...(openMeteo ? ["open-meteo"] : []),
+    ],
   });
 }
