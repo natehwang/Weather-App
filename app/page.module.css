@@ -303,6 +303,52 @@
   color: var(--text-secondary);
 }
 
+.loadingText {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.resultsLoading {
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 32px 16px;
+    gap: 12px;
+  }
+
+  .main h1 {
+    font-size: 26px;
+  }
+
+  .tempBig {
+    font-size: 44px;
+  }
+
+  .mapWrapper {
+    height: 280px;
+  }
+
+  .results,
+  .compareSection {
+    padding: 16px;
+  }
+
+  .grid {
+    gap: 16px 24px;
+  }
+
+  .compareGrid {
+    flex-direction: column;
+  }
+
+  .manualForm input {
+    width: calc(50% - 4px);
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .page {
     --background: #000;

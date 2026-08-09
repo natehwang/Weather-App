@@ -73,7 +73,6 @@ export default function Home() {
   async function loadWeather(targetLat: number, targetLng: number) {
     setLoading(true);
     setError(null);
-    setData(null);
     setLat(String(targetLat));
     setLng(String(targetLng));
     setMapCenter({ lat: targetLat, lng: targetLng });
@@ -93,6 +92,7 @@ export default function Home() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load weather");
+      setData(null); // stale data would be misleading after a failed refetch
     } finally {
       setLoading(false);
     }
@@ -148,6 +148,7 @@ export default function Home() {
       setDestData(body);
     } catch (err) {
       setCompareError(err instanceof Error ? err.message : "Failed to load destination weather");
+      setDestData(null);
     } finally {
       setCompareLoading(false);
     }
@@ -252,6 +253,12 @@ export default function Home() {
 
         {error && <div className={styles.error}>{error}</div>}
 
+        {loading && !data && (
+          <div className={styles.results}>
+            <div className={styles.loadingText}>Loading weather…</div>
+          </div>
+        )}
+
         {data && data.alerts.length > 0 && (
           <div className={styles.alertBanner}>
             {data.alerts.map((a) => (
@@ -261,7 +268,7 @@ export default function Home() {
         )}
 
         {data && (
-          <div className={styles.results}>
+          <div className={`${styles.results} ${loading ? styles.resultsLoading : ""}`}>
             <div className={styles.tempRow}>
               <div className={styles.tempBig}>
                 {data.tempF != null ? `${data.tempF.toFixed(1)}°F` : "No data"}
@@ -367,7 +374,7 @@ export default function Home() {
                 onChange={(e) => setDestLng(e.target.value)}
               />
               <button type="submit" disabled={compareLoading}>
-                Compare
+                {compareLoading ? "Comparing…" : "Compare"}
               </button>
             </form>
 
@@ -387,7 +394,7 @@ export default function Home() {
             {compareError && <div className={styles.error}>{compareError}</div>}
 
             {destData && (
-              <div className={styles.compareGrid}>
+              <div className={`${styles.compareGrid} ${compareLoading ? styles.resultsLoading : ""}`}>
                 <div className={styles.compareCard}>
                   <span className={styles.label}>Start</span>
                   <div className={styles.compareTemp}>

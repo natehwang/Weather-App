@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import RegisterServiceWorker from "@/components/register-sw";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,12 +17,33 @@ export const metadata: Metadata = {
   title: "SF Microclimate Weather",
   description:
     "Hyperlocal weather for San Francisco and Marin County, blended from PurpleAir, Open-Meteo, NDBC, and NWS.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SF Weather",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#2f6fd6",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <RegisterServiceWorker />
+      </body>
     </html>
   );
 }
