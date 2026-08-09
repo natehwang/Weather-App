@@ -46,9 +46,16 @@ interface WeatherResponse {
 
 const PRESETS = [
   { label: "Sunset / Ocean Beach", lat: 37.7594, lng: -122.5107 },
+  { label: "Richmond District", lat: 37.7806, lng: -122.4644 },
   { label: "Mission District", lat: 37.7599, lng: -122.4148 },
   { label: "Downtown / SOMA", lat: 37.7749, lng: -122.4194 },
+  { label: "Twin Peaks", lat: 37.7544, lng: -122.4477 },
   { label: "Marin Headlands (Hawk Hill)", lat: 37.8324, lng: -122.4934 },
+  { label: "Sausalito", lat: 37.8591, lng: -122.4853 },
+  { label: "Tiburon", lat: 37.8735, lng: -122.4569 },
+  { label: "Fairfax", lat: 37.9873, lng: -122.5881 },
+  { label: "Stinson Beach", lat: 37.8999, lng: -122.6402 },
+  { label: "Pantoll (Mt. Tam)", lat: 37.9061, lng: -122.6083 },
   { label: "Mt. Tamalpais", lat: 37.9235, lng: -122.5965 },
 ];
 
