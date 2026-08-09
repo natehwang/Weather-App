@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import styles from "./page.module.css";
-import { aqiCategory } from "@/lib/aqi";
 import { degreesToCompass } from "@/lib/compass";
 import { kitRecommendation } from "@/lib/kit";
 import { bearingDeg } from "@/lib/geo";
@@ -56,16 +55,12 @@ const PRESETS = [
 const DEFAULT_MAP_CENTER = { lat: 37.7749, lng: -122.4194 }; // San Francisco
 
 export default function Home() {
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
   const [data, setData] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mapCenter, setMapCenter] = useState(DEFAULT_MAP_CENTER);
+  const [selectedPoint, setSelectedPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [stationMarkers, setStationMarkers] = useState<StationMarker[]>([]);
 
-  const [destLat, setDestLat] = useState("");
-  const [destLng, setDestLng] = useState("");
   const [destData, setDestData] = useState<WeatherResponse | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareError, setCompareError] = useState<string | null>(null);
@@ -73,9 +68,7 @@ export default function Home() {
   async function loadWeather(targetLat: number, targetLng: number) {
     setLoading(true);
     setError(null);
-    setLat(String(targetLat));
-    setLng(String(targetLng));
-    setMapCenter({ lat: targetLat, lng: targetLng });
+    setSelectedPoint({ lat: targetLat, lng: targetLng });
     setDestData(null); // start point changed; any prior comparison is stale
     try {
       const [weatherRes, stationsRes] = await Promise.all([
@@ -121,26 +114,13 @@ export default function Home() {
     );
   }
 
-  function handleManualSubmit(e: FormEvent) {
-    e.preventDefault();
-    const parsedLat = parseFloat(lat);
-    const parsedLng = parseFloat(lng);
-    if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-      setError("Enter valid latitude and longitude.");
-      return;
-    }
-    loadWeather(parsedLat, parsedLng);
-  }
-
   async function loadDestination(targetLat: number, targetLng: number) {
     if (!data) {
-      setCompareError("Set a start point above first.");
+      setCompareError("Pick a start point above first.");
       return;
     }
     setCompareLoading(true);
     setCompareError(null);
-    setDestLat(String(targetLat));
-    setDestLng(String(targetLng));
     try {
       const res = await fetch(`/api/weather?lat=${targetLat}&lng=${targetLng}`);
       const body = await res.json();
@@ -152,17 +132,6 @@ export default function Home() {
     } finally {
       setCompareLoading(false);
     }
-  }
-
-  function handleCompareSubmit(e: FormEvent) {
-    e.preventDefault();
-    const parsedLat = parseFloat(destLat);
-    const parsedLng = parseFloat(destLng);
-    if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-      setCompareError("Enter valid destination latitude and longitude.");
-      return;
-    }
-    loadDestination(parsedLat, parsedLng);
   }
 
   const comparison = (() => {
@@ -210,26 +179,6 @@ export default function Home() {
           {loading ? "Locating…" : "Use my location"}
         </button>
 
-        <form className={styles.manualForm} onSubmit={handleManualSubmit}>
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="Latitude"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-          />
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="Longitude"
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-          />
-          <button type="submit" disabled={loading}>
-            Get weather
-          </button>
-        </form>
-
         <div className={styles.presets}>
           {PRESETS.map((preset) => (
             <button
@@ -244,11 +193,16 @@ export default function Home() {
         </div>
 
         <div className={styles.mapWrapper}>
-          <WeatherMap center={mapCenter} stations={stationMarkers} onMapClick={handleMapClick} />
+          <WeatherMap
+            center={selectedPoint ?? DEFAULT_MAP_CENTER}
+            pin={selectedPoint}
+            stations={stationMarkers}
+            onMapClick={handleMapClick}
+          />
         </div>
         <div className={styles.mapHint}>
-          Tap the map to check weather at that point. Markers are nearby sensors colored by
-          temperature (blue = cooler, red = warmer).
+          Click or tap anywhere on the map to drop a pin and see the weather there. Scroll or use
+          the +/− controls to zoom.
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
@@ -281,12 +235,6 @@ export default function Home() {
               <div className={styles.gridItem}>
                 <span className={styles.label}>Humidity</span>
                 <span>{data.humidityPct != null ? `${data.humidityPct}%` : "—"}</span>
-              </div>
-              <div className={styles.gridItem}>
-                <span className={styles.label}>AQI (PM2.5)</span>
-                <span>
-                  {data.aqiPm25 != null ? `${data.aqiPm25} (${aqiCategory(data.aqiPm25)})` : "—"}
-                </span>
               </div>
               <div className={styles.gridItem}>
                 <span className={styles.label}>
@@ -358,26 +306,6 @@ export default function Home() {
               out and back.
             </p>
 
-            <form className={styles.manualForm} onSubmit={handleCompareSubmit}>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="Dest. latitude"
-                value={destLat}
-                onChange={(e) => setDestLat(e.target.value)}
-              />
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="Dest. longitude"
-                value={destLng}
-                onChange={(e) => setDestLng(e.target.value)}
-              />
-              <button type="submit" disabled={compareLoading}>
-                {compareLoading ? "Comparing…" : "Compare"}
-              </button>
-            </form>
-
             <div className={styles.presets}>
               {PRESETS.map((preset) => (
                 <button
@@ -391,6 +319,7 @@ export default function Home() {
               ))}
             </div>
 
+            {compareLoading && <div className={styles.loadingText}>Comparing…</div>}
             {compareError && <div className={styles.error}>{compareError}</div>}
 
             {destData && (
@@ -435,8 +364,8 @@ export default function Home() {
         )}
 
         <footer className={styles.footer}>
-          Temperature, humidity, and AQI from PurpleAir sensors, corrected
-          for known sensor bias (raw temperature −8°F, raw humidity +4%). Wind
+          Temperature and humidity from PurpleAir sensors, corrected for
+          known sensor bias (raw temperature −8°F, raw humidity +4%). Wind
           and forecast data by Open-Meteo.com (CC BY 4.0). Golden Gate wind
           and forecast/advisory data courtesy of NOAA/NWS and NDBC.
         </footer>

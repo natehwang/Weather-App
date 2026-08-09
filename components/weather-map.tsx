@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import { tempToColor } from "@/lib/temp-color";
 import "leaflet/dist/leaflet.css";
 
@@ -15,9 +16,20 @@ export interface StationMarker {
 
 interface WeatherMapProps {
   center: { lat: number; lng: number };
+  pin: { lat: number; lng: number } | null;
   stations: StationMarker[];
   onMapClick: (lat: number, lng: number) => void;
 }
+
+const pinIcon = L.divIcon({
+  html: `<svg width="32" height="32" viewBox="0 0 24 24">
+    <path d="M12 0C7.03 0 3 4.03 3 9c0 6.75 9 15 9 15s9-8.25 9-15c0-4.97-4.03-9-9-9z" fill="#111" stroke="white" stroke-width="1.5"/>
+    <circle cx="12" cy="9" r="3.2" fill="white"/>
+  </svg>`,
+  className: "",
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
 
 function RecenterMap({ center }: { center: { lat: number; lng: number } }) {
   const map = useMap();
@@ -36,7 +48,7 @@ function ClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) =
   return null;
 }
 
-export default function WeatherMap({ center, stations, onMapClick }: WeatherMapProps) {
+export default function WeatherMap({ center, pin, stations, onMapClick }: WeatherMapProps) {
   return (
     <MapContainer
       center={[center.lat, center.lng]}
@@ -68,6 +80,7 @@ export default function WeatherMap({ center, stations, onMapClick }: WeatherMapP
           </CircleMarker>
         ) : null
       )}
+      {pin && <Marker position={[pin.lat, pin.lng]} icon={pinIcon} />}
     </MapContainer>
   );
 }

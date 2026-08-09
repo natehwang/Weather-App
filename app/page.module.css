@@ -60,37 +60,6 @@
   cursor: default;
 }
 
-.manualForm {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.manualForm input {
-  font-family: var(--font-geist-mono);
-  font-size: 14px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  width: 140px;
-}
-
-.manualForm button {
-  font-family: inherit;
-  font-size: 14px;
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.manualForm button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
 .presets {
   display: flex;
   flex-wrap: wrap;
@@ -342,10 +311,6 @@
 
   .compareGrid {
     flex-direction: column;
-  }
-
-  .manualForm input {
-    width: calc(50% - 4px);
   }
 }
 
