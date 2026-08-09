@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchNearbyStations } from "@/lib/aggregate";
-import { blendObservations } from "@/lib/interpolate";
+import { blendObservations, ELEVATION_FLAG_THRESHOLD_FT } from "@/lib/interpolate";
 import { getOpenMeteoForecast } from "@/lib/providers/open-meteo";
+import { getNwsConditions } from "@/lib/providers/nws";
+import { getElevationFt } from "@/lib/elevation";
 import { windChillF } from "@/lib/wind-chill";
+import { resolveWind } from "@/lib/wind";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,9 +23,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const [stationsResult, openMeteoResult] = await Promise.allSettled([
+  const [stationsResult, openMeteoResult, nwsResult, elevationResult] = await Promise.allSettled([
     fetchNearbyStations(lat, lng),
     getOpenMeteoForecast(lat, lng),
+    getNwsConditions(lat, lng),
+    getElevationFt(lat, lng),
   ]);
 
   if (stationsResult.status === "rejected" && openMeteoResult.status === "rejected") {
@@ -32,8 +37,10 @@ export async function GET(request: NextRequest) {
   const stations = stationsResult.status === "fulfilled" ? stationsResult.value.stations : [];
   const radiusUsedMi = stationsResult.status === "fulfilled" ? stationsResult.value.radiusUsedMi : null;
   const openMeteo = openMeteoResult.status === "fulfilled" ? openMeteoResult.value : null;
+  const nws = nwsResult.status === "fulfilled" ? nwsResult.value : null;
+  const targetElevationFt = elevationResult.status === "fulfilled" ? elevationResult.value : null;
 
-  const blended = blendObservations(stations, lat, lng);
+  const blended = blendObservations(stations, lat, lng, { targetElevationFt });
 
   // Prefer station-interpolated temp; fall back to the Open-Meteo model point
   // when no nearby stations reported (e.g. deep in the Headlands).
@@ -41,9 +48,14 @@ export async function GET(request: NextRequest) {
   const tempSource: "stations" | "open-meteo" | null =
     blended.tempF != null ? "stations" : openMeteo?.tempF != null ? "open-meteo" : null;
 
-  const windSpeedMph = openMeteo?.windSpeedMph ?? null;
+  const wind = resolveWind(lat, lng, stations, openMeteo);
   const feelsLikeF =
-    tempF != null && windSpeedMph != null ? Math.round(windChillF(tempF, windSpeedMph) * 10) / 10 : tempF;
+    tempF != null && wind.speedMph != null ? Math.round(windChillF(tempF, wind.speedMph) * 10) / 10 : tempF;
+
+  const elevationGapFt =
+    targetElevationFt != null && blended.nearestStationElevationFt != null
+      ? Math.round(targetElevationFt - blended.nearestStationElevationFt)
+      : null;
 
   return NextResponse.json({
     location: { lat, lng },
@@ -52,21 +64,24 @@ export async function GET(request: NextRequest) {
     humidityPct: blended.humidityPct,
     aqiPm25: blended.aqiPm25,
     stationCount: blended.stationCount,
-    nearestStationDistanceMi:
-      blended.nearestStationDistanceMi != null ? Math.round(blended.nearestStationDistanceMi * 100) / 100 : null,
+    nearestStationDistanceMi: blended.nearestStationDistanceMi,
     searchRadiusMi: radiusUsedMi,
     feelsLikeF,
-    wind: openMeteo
-      ? {
-          speedMph: openMeteo.windSpeedMph,
-          directionDeg: openMeteo.windDirectionDeg,
-          gustMph: openMeteo.windGustMph,
-        }
-      : null,
+    wind,
     hourly: openMeteo?.hourly ?? [],
+    elevation: {
+      targetFt: targetElevationFt != null ? Math.round(targetElevationFt) : null,
+      nearestStationFt: blended.nearestStationElevationFt,
+      gapFt: elevationGapFt,
+      flagged: elevationGapFt != null && Math.abs(elevationGapFt) > ELEVATION_FLAG_THRESHOLD_FT,
+    },
+    fog: nws ? { likely: nws.fogLikely, shortForecast: nws.shortForecast } : null,
+    alerts: nws?.alerts ?? [],
     sources: [
-      ...(stations.length > 0 ? ["purpleair"] : []),
+      ...(stations.some((s) => s.sourceType === "purpleair") ? ["purpleair"] : []),
+      ...(stations.some((s) => s.sourceType === "ndbc") ? ["ndbc"] : []),
       ...(openMeteo ? ["open-meteo"] : []),
+      ...(nws ? ["nws"] : []),
     ],
   });
 }

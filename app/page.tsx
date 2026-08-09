@@ -22,8 +22,16 @@ interface WeatherResponse {
   nearestStationDistanceMi: number | null;
   searchRadiusMi: number | null;
   feelsLikeF: number | null;
-  wind: { speedMph: number | null; directionDeg: number | null; gustMph: number | null } | null;
+  wind: {
+    speedMph: number | null;
+    directionDeg: number | null;
+    gustMph: number | null;
+    source: "ndbc" | "open-meteo" | null;
+  } | null;
   hourly: HourlyForecastPoint[];
+  elevation: { targetFt: number | null; nearestStationFt: number | null; gapFt: number | null; flagged: boolean };
+  fog: { likely: boolean; shortForecast: string | null } | null;
+  alerts: { event: string; headline: string }[];
   sources: string[];
 }
 
@@ -139,6 +147,14 @@ export default function Home() {
 
         {error && <div className={styles.error}>{error}</div>}
 
+        {data && data.alerts.length > 0 && (
+          <div className={styles.alertBanner}>
+            {data.alerts.map((a) => (
+              <div key={a.headline}>{a.headline}</div>
+            ))}
+          </div>
+        )}
+
         {data && (
           <div className={styles.results}>
             <div className={styles.tempRow}>
@@ -161,7 +177,9 @@ export default function Home() {
                 </span>
               </div>
               <div className={styles.gridItem}>
-                <span className={styles.label}>Wind</span>
+                <span className={styles.label}>
+                  Wind{data.wind?.source === "ndbc" ? " (Golden Gate station)" : ""}
+                </span>
                 <span>
                   {data.wind?.speedMph != null
                     ? `${Math.round(data.wind.speedMph)} mph${
@@ -192,6 +210,20 @@ export default function Home() {
               </div>
             )}
 
+            {data.fog?.likely && (
+              <div className={styles.fogFlag}>
+                Fog likely{data.fog.shortForecast ? ` — ${data.fog.shortForecast}` : ""}
+              </div>
+            )}
+
+            {data.elevation.flagged && data.elevation.gapFt != null && (
+              <div className={styles.elevationFlag}>
+                Nearest station is {Math.abs(data.elevation.gapFt)} ft{" "}
+                {data.elevation.gapFt > 0 ? "below" : "above"} this point — temperature adjusted
+                using a standard lapse rate.
+              </div>
+            )}
+
             <div className={styles.status}>
               {data.stationCount} station{data.stationCount === 1 ? "" : "s"}
               {data.searchRadiusMi != null && ` within ${data.searchRadiusMi} mi`}
@@ -205,7 +237,8 @@ export default function Home() {
         <footer className={styles.footer}>
           Temperature, humidity, and AQI from PurpleAir sensors, corrected
           for known sensor bias (raw temperature −8°F, raw humidity +4%). Wind
-          and forecast data by Open-Meteo.com (CC BY 4.0).
+          and forecast data by Open-Meteo.com (CC BY 4.0). Golden Gate wind
+          and forecast/advisory data courtesy of NOAA/NWS and NDBC.
         </footer>
       </main>
     </div>

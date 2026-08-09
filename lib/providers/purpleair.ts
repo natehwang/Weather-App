@@ -26,7 +26,7 @@ async function fetchPurpleAirSensors(lat: number, lng: number, radiusMi: number)
 
   const bbox = boundingBoxFromRadiusMi(lat, lng, radiusMi);
   const params = new URLSearchParams({
-    fields: "temperature,humidity,pm2.5_atm,latitude,longitude,last_seen",
+    fields: "temperature,humidity,pm2.5_atm,latitude,longitude,last_seen,altitude",
     location_type: "0", // outdoor only
     max_age: String(MAX_AGE_SEC),
     nwlng: bbox.nwLng.toFixed(6),
@@ -53,6 +53,7 @@ async function fetchPurpleAirSensors(lat: number, lng: number, radiusMi: number)
   const iLat = indexOf("latitude");
   const iLng = indexOf("longitude");
   const iLastSeen = indexOf("last_seen");
+  const iAltitude = indexOf("altitude");
 
   const observations: StationObservation[] = [];
   for (const row of json.data) {
@@ -64,6 +65,7 @@ async function fetchPurpleAirSensors(lat: number, lng: number, radiusMi: number)
     const rawTemp = iTemp >= 0 ? (row[iTemp] as number | null) : null;
     const rawHumidity = iHumidity >= 0 ? (row[iHumidity] as number | null) : null;
     const rawPm25 = iPm25 >= 0 ? (row[iPm25] as number | null) : null;
+    const elevationFt = iAltitude >= 0 ? (row[iAltitude] as number | null) : null;
 
     observations.push({
       id: `purpleair:${iSensorIndex >= 0 ? row[iSensorIndex] : `${rowLat},${rowLng}`}`,
@@ -72,6 +74,7 @@ async function fetchPurpleAirSensors(lat: number, lng: number, radiusMi: number)
       tempF: rawTemp != null ? rawTemp + TEMP_OFFSET_F : null,
       humidityPct: rawHumidity != null ? rawHumidity + HUMIDITY_OFFSET : null,
       aqiPm25: rawPm25 != null ? pm25ToAqi(rawPm25) : null,
+      elevationFt,
       lastSeen,
       sourceType: "purpleair",
     });

@@ -4,10 +4,12 @@ import { haversineMiles } from "./geo";
 const RECENCY_WINDOW_SEC = 60 * 60; // drop stations not seen in the last ~60 min
 const OUTLIER_THRESHOLD_F = 5; // drop temp readings >5°F from the neighbor median
 const IDW_POWER = 2;
+export const LAPSE_RATE_F_PER_1000FT = 3.5;
+export const ELEVATION_FLAG_THRESHOLD_FT = 500;
 
-// Relative trust per source when blending a metric. Only PurpleAir feeds
-// temp/humidity/AQI today; NDBC/NWS/Synoptic weights matter once those
-// providers land (official/RAWS stations should outweigh PurpleAir for temp).
+// Relative trust per source when blending a metric. Official/RAWS/NDBC
+// stations outweigh PurpleAir for temp; Open-Meteo is the lightest-weighted
+// fallback since it's a model, not a ground reading.
 const QUALITY_WEIGHT: Record<SourceType, number> = {
   purpleair: 1,
   "open-meteo": 0.6,
@@ -26,6 +28,7 @@ export interface BlendedResult {
   aqiPm25: number | null;
   stationCount: number;
   nearestStationDistanceMi: number | null;
+  nearestStationElevationFt: number | null;
 }
 
 function median(values: number[]): number {
@@ -55,21 +58,21 @@ function idw(points: { value: number; distanceMi: number; weight: number }[]): n
   return weightTotal > 0 ? weightedSum / weightTotal : null;
 }
 
-function interpolateMetric<K extends "tempF" | "humidityPct" | "aqiPm25">(
+function interpolateValues(
   stations: StationWithDistance[],
-  key: K,
+  getValue: (station: StationWithDistance) => number | null,
   outlierThreshold: number | null
 ): number | null {
-  const candidates = stations.filter(
-    (s): s is StationWithDistance & Record<K, number> => s[key] != null
-  );
+  const candidates = stations
+    .map((station) => ({ station, value: getValue(station) }))
+    .filter((c): c is { station: StationWithDistance; value: number } => c.value != null);
   const filtered =
-    outlierThreshold != null ? rejectOutliers(candidates, (s) => s[key], outlierThreshold) : candidates;
+    outlierThreshold != null ? rejectOutliers(candidates, (c) => c.value, outlierThreshold) : candidates;
   return idw(
-    filtered.map((s) => ({
-      value: s[key],
-      distanceMi: s.distanceMi,
-      weight: QUALITY_WEIGHT[s.sourceType],
+    filtered.map((c) => ({
+      value: c.value,
+      distanceMi: c.station.distanceMi,
+      weight: QUALITY_WEIGHT[c.station.sourceType],
     }))
   );
 }
@@ -78,24 +81,42 @@ export function blendObservations(
   stations: StationObservation[],
   lat: number,
   lng: number,
-  nowSec: number = Date.now() / 1000
+  options: { nowSec?: number; targetElevationFt?: number | null } = {}
 ): BlendedResult {
+  const nowSec = options.nowSec ?? Date.now() / 1000;
+  const targetElevationFt = options.targetElevationFt ?? null;
+
   const withDistance: StationWithDistance[] = stations
     .filter((s) => nowSec - s.lastSeen <= RECENCY_WINDOW_SEC)
     .map((s) => ({ ...s, distanceMi: haversineMiles(lat, lng, s.lat, s.lng) }));
 
-  const tempF = interpolateMetric(withDistance, "tempF", OUTLIER_THRESHOLD_F);
-  const humidityPct = interpolateMetric(withDistance, "humidityPct", null);
-  const aqiPm25 = interpolateMetric(withDistance, "aqiPm25", null);
+  // Project each station's temp to what it'd read at the target's elevation
+  // before blending, so a summit query isn't just averaging sea-level sensors.
+  const tempF = interpolateValues(
+    withDistance,
+    (s) => {
+      if (s.tempF == null) return null;
+      if (targetElevationFt != null && s.elevationFt != null) {
+        return s.tempF - (LAPSE_RATE_F_PER_1000FT * (targetElevationFt - s.elevationFt)) / 1000;
+      }
+      return s.tempF;
+    },
+    OUTLIER_THRESHOLD_F
+  );
+  const humidityPct = interpolateValues(withDistance, (s) => s.humidityPct, null);
+  const aqiPm25 = interpolateValues(withDistance, (s) => s.aqiPm25, null);
 
-  const nearestStationDistanceMi =
-    withDistance.length > 0 ? Math.min(...withDistance.map((s) => s.distanceMi)) : null;
+  let nearestStation: StationWithDistance | null = null;
+  for (const s of withDistance) {
+    if (!nearestStation || s.distanceMi < nearestStation.distanceMi) nearestStation = s;
+  }
 
   return {
     tempF: tempF != null ? Math.round(tempF * 10) / 10 : null,
     humidityPct: humidityPct != null ? Math.round(humidityPct) : null,
     aqiPm25: aqiPm25 != null ? Math.round(aqiPm25) : null,
     stationCount: withDistance.length,
-    nearestStationDistanceMi,
+    nearestStationDistanceMi: nearestStation ? Math.round(nearestStation.distanceMi * 100) / 100 : null,
+    nearestStationElevationFt: nearestStation?.elevationFt ?? null,
   };
 }

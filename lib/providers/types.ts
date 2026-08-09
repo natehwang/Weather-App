@@ -10,6 +10,7 @@ export interface StationObservation {
   windSpeedMph?: number | null;
   windDirectionDeg?: number | null;
   windGustMph?: number | null;
+  elevationFt?: number | null;
   /** Unix seconds. */
   lastSeen: number;
   sourceType: SourceType;
