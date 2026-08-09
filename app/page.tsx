@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import styles from "./page.module.css";
 import { aqiCategory } from "@/lib/aqi";
 import { degreesToCompass } from "@/lib/compass";
+import type { StationMarker } from "@/components/weather-map";
+
+const WeatherMap = dynamic(() => import("@/components/weather-map"), {
+  ssr: false,
+  loading: () => <div className={styles.mapLoading}>Loading map…</div>,
+});
 
 interface HourlyForecastPoint {
   time: string;
@@ -43,12 +50,16 @@ const PRESETS = [
   { label: "Mt. Tamalpais", lat: 37.9235, lng: -122.5965 },
 ];
 
+const DEFAULT_MAP_CENTER = { lat: 37.7749, lng: -122.4194 }; // San Francisco
+
 export default function Home() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [data, setData] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mapCenter, setMapCenter] = useState(DEFAULT_MAP_CENTER);
+  const [stationMarkers, setStationMarkers] = useState<StationMarker[]>([]);
 
   async function loadWeather(targetLat: number, targetLng: number) {
     setLoading(true);
@@ -56,16 +67,29 @@ export default function Home() {
     setData(null);
     setLat(String(targetLat));
     setLng(String(targetLng));
+    setMapCenter({ lat: targetLat, lng: targetLng });
     try {
-      const res = await fetch(`/api/weather?lat=${targetLat}&lng=${targetLng}`);
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
+      const [weatherRes, stationsRes] = await Promise.all([
+        fetch(`/api/weather?lat=${targetLat}&lng=${targetLng}`),
+        fetch(`/api/stations?lat=${targetLat}&lng=${targetLng}&radius=3`),
+      ]);
+      const body = await weatherRes.json();
+      if (!weatherRes.ok) throw new Error(body.error ?? `Request failed (${weatherRes.status})`);
       setData(body);
+
+      if (stationsRes.ok) {
+        const stationsBody = await stationsRes.json();
+        setStationMarkers(stationsBody.stations ?? []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load weather");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleMapClick(clickLat: number, clickLng: number) {
+    loadWeather(clickLat, clickLng);
   }
 
   function useMyLocation() {
@@ -143,6 +167,14 @@ export default function Home() {
               {preset.label}
             </button>
           ))}
+        </div>
+
+        <div className={styles.mapWrapper}>
+          <WeatherMap center={mapCenter} stations={stationMarkers} onMapClick={handleMapClick} />
+        </div>
+        <div className={styles.mapHint}>
+          Tap the map to check weather at that point. Markers are nearby sensors colored by
+          temperature (blue = cooler, red = warmer).
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
