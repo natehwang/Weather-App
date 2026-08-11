@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import styles from "./page.module.css";
 import { degreesToCompass } from "@/lib/compass";
@@ -75,6 +75,15 @@ export default function Home() {
   const [compareError, setCompareError] = useState<string | null>(null);
   const [selectedDestPreset, setSelectedDestPreset] = useState<string | null>(null);
 
+  // On mobile, default to the Golden Gate Bridge point on first load so
+  // there's something on screen without requiring a tap first.
+  useEffect(() => {
+    const isMobile = window.matchMedia("(max-width: 480px)").matches;
+    if (!isMobile) return;
+    const goldenGate = PRESETS.find((p) => p.label === "Golden Gate Bridge");
+    if (goldenGate) loadWeather(goldenGate.lat, goldenGate.lng, goldenGate.label);
+  }, []);
+
   async function loadWeather(targetLat: number, targetLng: number, presetLabel: string | null = null) {
     setLoading(true);
     setError(null);
@@ -120,9 +129,20 @@ export default function Home() {
       },
       (geoError) => {
         setLoading(false);
-        setError(`Location error: ${geoError.message}`);
+        let message = "Could not determine your location. Try a preset or tap the map instead.";
+        if (geoError.code === geoError.PERMISSION_DENIED) {
+          message =
+            "Location access is blocked. Enable location permission for this site in your browser/phone settings, then try again.";
+        } else if (geoError.code === geoError.TIMEOUT) {
+          message = "Location request timed out. Try again, or make sure location services are on.";
+        }
+        setError(message);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      // High accuracy (GPS) is often what makes mobile location hang or
+      // time out indoors; network-based positioning is faster and plenty
+      // precise for this app's multi-mile search radius. Allow a recent
+      // cached fix so it can resolve near-instantly when one exists.
+      { enableHighAccuracy: false, timeout: 20000, maximumAge: 5 * 60 * 1000 }
     );
   }
 
