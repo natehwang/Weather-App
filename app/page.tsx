@@ -65,6 +65,7 @@ const DEFAULT_MAP_CENTER = { lat: 37.7749, lng: -122.4194 }; // San Francisco
 export default function Home() {
   const [data, setData] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [stationMarkers, setStationMarkers] = useState<StationMarker[]>([]);
@@ -121,14 +122,15 @@ export default function Home() {
       setError("Geolocation is not supported in this browser.");
       return;
     }
-    setLoading(true);
+    setLocating(true);
     setError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        setLocating(false);
         loadWeather(position.coords.latitude, position.coords.longitude);
       },
       (geoError) => {
-        setLoading(false);
+        setLocating(false);
         let message = "Could not determine your location. Try a preset or tap the map instead.";
         if (geoError.code === geoError.PERMISSION_DENIED) {
           message =
@@ -209,8 +211,8 @@ export default function Home() {
           tabs in real-time so you don&apos;t have to.
         </p>
 
-        <button className={styles.primaryButton} onClick={useMyLocation} disabled={loading}>
-          {loading ? "Locating…" : "Use my location"}
+        <button className={styles.primaryButton} onClick={useMyLocation} disabled={locating}>
+          {locating ? "Locating…" : "Use my location"}
         </button>
 
         <div className={styles.presets}>
