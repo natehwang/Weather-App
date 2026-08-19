@@ -2,7 +2,17 @@
 
 import { useEffect } from "react";
 import L from "leaflet";
-import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Marker,
+  Popup,
+  ZoomControl,
+  AttributionControl,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import { tempToColor } from "@/lib/temp-color";
 import "leaflet/dist/leaflet.css";
 
@@ -53,12 +63,16 @@ export default function WeatherMap({ center, pin, stations, onMapClick }: Weathe
     <MapContainer
       center={[center.lat, center.lng]}
       zoom={12}
+      zoomControl={false}
+      attributionControl={false}
       style={{ height: "100%", width: "100%" }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <ZoomControl position="topright" />
+      <AttributionControl position="bottomleft" />
       <RecenterMap center={center} />
       <ClickHandler onMapClick={onMapClick} />
       {stations.map((s) =>

@@ -1,14 +1,22 @@
 .page {
-  --background: #fafafa;
+  --background: #f7fafc;
   --foreground: #fff;
 
-  --text-primary: #000;
-  --text-secondary: #666;
-  --border: #e5e5e5;
+  --text-primary: #16323f;
+  --text-secondary: #5c7a88;
+  --border: #e3edf1;
   --error: #b3261e;
   --alert-bg: #fdecea;
   --alert-text: #8a2a1e;
-  --notice-bg: #f2f2f2;
+  --notice-bg: #eef5f8;
+
+  --card-bg: #ffffff;
+  --card-shadow: 0 4px 16px rgba(30, 70, 90, 0.08);
+  --sky-top: #dbeeff;
+  --hill-color: #cfe3c8;
+  --bridge-color: rgba(180, 90, 60, 0.55);
+  --accent: #f5b342;
+  --fresh-dot: #35b06b;
 
   display: flex;
   flex: 1;
@@ -27,32 +35,72 @@
   width: 100%;
   max-width: 640px;
   gap: 16px;
-  padding: 60px 24px;
-}
-
-.main h1 {
-  font-size: 32px;
-  font-weight: 600;
-  letter-spacing: -1px;
-  color: var(--text-primary);
+  padding: 0 24px 60px;
 }
 
 .main p {
-  font-size: 16px;
-  line-height: 26px;
+  font-size: 15px;
+  line-height: 24px;
   color: var(--text-secondary);
 }
+
+/* --- Hero header --- */
+
+.hero {
+  position: relative;
+  width: calc(100% + 48px);
+  margin: 0 -24px 8px;
+  padding: 44px 24px 28px;
+  overflow: hidden;
+  background: linear-gradient(to bottom, var(--sky-top), var(--background));
+}
+
+.heroSky {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 90px;
+  pointer-events: none;
+}
+
+.heroSkyline {
+  width: 100%;
+  height: 100%;
+}
+
+.heroContent {
+  position: relative;
+  padding-right: 72px;
+}
+
+.heroContent h1 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.heroMascot {
+  position: absolute;
+  top: -6px;
+  right: 0;
+}
+
+/* --- Buttons & chips --- */
 
 .primaryButton {
   font-family: inherit;
   font-size: 15px;
-  font-weight: 500;
-  padding: 10px 20px;
-  border-radius: 8px;
+  font-weight: 600;
+  padding: 12px 22px;
+  border-radius: 999px;
   border: none;
   background: var(--text-primary);
-  color: var(--background);
+  color: #fff;
   cursor: pointer;
+  box-shadow: var(--card-shadow);
 }
 
 .primaryButton:disabled {
@@ -69,16 +117,17 @@
 .presetButton {
   font-family: inherit;
   font-size: 13px;
-  padding: 6px 12px;
+  font-weight: 500;
+  padding: 7px 14px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: transparent;
+  border: none;
+  background: var(--notice-bg);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
     background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .presetButton:disabled {
@@ -88,10 +137,9 @@
 
 .presetButtonActive {
   background: #fff;
-  border-color: #fff;
-  color: #111;
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  color: var(--text-primary);
+  font-weight: 700;
+  box-shadow: var(--card-shadow);
 }
 
 .error {
@@ -99,12 +147,19 @@
   color: var(--error);
 }
 
+/* --- Map card --- */
+
+.mapCard {
+  position: relative;
+  width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+
 .mapWrapper {
   width: 100%;
   height: 360px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--border);
 }
 
 .mapLoading {
@@ -114,6 +169,7 @@
   height: 100%;
   font-size: 14px;
   color: var(--text-secondary);
+  background: var(--card-bg);
 }
 
 .mapHint {
@@ -122,31 +178,181 @@
   margin-top: -8px;
 }
 
+.mapLegend {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow: var(--card-shadow);
+  z-index: 400;
+}
+
+.legendHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.legendDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fresh-dot);
+}
+
+.legendSubhead {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.legendBarRow {
+  display: flex;
+  gap: 6px;
+  height: 90px;
+}
+
+.legendBar {
+  width: 12px;
+  border-radius: 6px;
+}
+
+.legendTicks {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.mapLocateButton {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  z-index: 400;
+}
+
+.mapLocateButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- Results card --- */
+
 .results {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--card-bg);
+  border-radius: 20px;
   padding: 24px;
+  box-shadow: var(--card-shadow);
 }
 
-.tempRow {
+.conditionsTop {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.conditionsLeft {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
 .tempBig {
-  font-size: 56px;
-  font-weight: 600;
-  letter-spacing: -2px;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
   color: var(--text-primary);
+  line-height: 1;
 }
 
 .feelsLike {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.freshnessBadge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.freshnessDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fresh-dot);
+}
+
+.conditionsRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+}
+
+.pointLabel {
   font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.elevationLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.windReadout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.windLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.windValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gustValue {
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -162,9 +368,31 @@
   gap: 4px;
 }
 
+.label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+/* --- Hourly strip --- */
+
+.hourlySection {
+  background: var(--notice-bg);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.hourlySectionHeader {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
 .hourlyStrip {
   display: flex;
-  gap: 16px;
+  gap: 18px;
   overflow-x: auto;
   padding-bottom: 4px;
 }
@@ -173,21 +401,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  min-width: 48px;
-  font-size: 14px;
+  gap: 3px;
+  min-width: 40px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .hourlyWind {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 10px;
+  font-weight: 400;
   color: var(--text-secondary);
 }
 
@@ -206,7 +429,7 @@
   font-weight: 500;
   color: var(--alert-text);
   background: var(--alert-bg);
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 12px 16px;
 }
 
@@ -215,23 +438,26 @@
   font-size: 13px;
   color: var(--text-primary);
   background: var(--notice-bg);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 8px 12px;
 }
+
+/* --- Compare section --- */
 
 .compareSection {
   display: flex;
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--card-bg);
+  border-radius: 20px;
   padding: 24px;
+  box-shadow: var(--card-shadow);
 }
 
 .compareTitle {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
@@ -250,18 +476,19 @@
 .compareCard {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 4px;
   flex: 1;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 16px;
+  background: var(--notice-bg);
+  border-radius: 14px;
+  padding: 14px 16px;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
 .compareTemp {
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
@@ -274,11 +501,11 @@
 }
 
 .compareKit {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .footer {
-  margin-top: 24px;
+  margin-top: 8px;
   font-size: 12px;
   line-height: 18px;
   color: var(--text-secondary);
@@ -296,16 +523,22 @@
 
 @media (max-width: 480px) {
   .main {
-    padding: 32px 16px;
+    padding: 0 16px 32px;
     gap: 12px;
   }
 
-  .main h1 {
-    font-size: 26px;
+  .hero {
+    width: calc(100% + 32px);
+    margin: 0 -16px 8px;
+    padding: 32px 16px 24px;
+  }
+
+  .heroContent h1 {
+    font-size: 24px;
   }
 
   .tempBig {
-    font-size: 44px;
+    font-size: 36px;
   }
 
   .mapWrapper {
@@ -324,24 +557,50 @@
   .compareGrid {
     flex-direction: column;
   }
+
+  .conditionsTop {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .conditionsRight {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .windReadout {
+    align-items: flex-start;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   .page {
-    --background: #000;
+    --background: #0b1418;
     --foreground: #000;
 
-    --text-primary: #ededed;
-    --text-secondary: #999;
-    --border: #333;
+    --text-primary: #eaf2f5;
+    --text-secondary: #8ea3ac;
+    --border: #1e2c31;
     --error: #ff6b60;
     --alert-bg: #3a1f1c;
     --alert-text: #ff9c8f;
-    --notice-bg: #1a1a1a;
+    --notice-bg: #142226;
+
+    --card-bg: #101c20;
+    --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    --sky-top: #142430;
+    --hill-color: #1c2b22;
+    --bridge-color: rgba(180, 90, 60, 0.4);
+    --fresh-dot: #4fd487;
   }
 
   .primaryButton {
     background: var(--text-primary);
-    color: #000;
+    color: #08151a;
+  }
+
+  .presetButtonActive {
+    background: #1a2a30;
+    color: var(--text-primary);
   }
 }

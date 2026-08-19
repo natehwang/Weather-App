@@ -7,6 +7,9 @@ import { degreesToCompass } from "@/lib/compass";
 import { kitRecommendation } from "@/lib/kit";
 import { bearingDeg } from "@/lib/geo";
 import { computeWindComponents, describeWindComponents } from "@/lib/wind-component";
+import { timeOfDayGreeting } from "@/lib/greeting";
+import { tempColorStops } from "@/lib/temp-color";
+import WeatherIcon, { type WeatherIconCondition } from "@/components/weather-icon";
 import type { StationMarker } from "@/components/weather-map";
 
 const WeatherMap = dynamic(() => import("@/components/weather-map"), {
@@ -19,12 +22,14 @@ interface HourlyForecastPoint {
   tempF: number | null;
   windSpeedMph: number | null;
   precipProbabilityPct: number | null;
+  conditionCode: WeatherIconCondition;
 }
 
 interface WeatherResponse {
   location: { lat: number; lng: number };
   tempF: number | null;
   tempSource: "stations" | "open-meteo" | null;
+  conditionCode: WeatherIconCondition;
   humidityPct: number | null;
   aqiPm25: number | null;
   stationCount: number;
@@ -61,9 +66,11 @@ const PRESETS = [
 ];
 
 const DEFAULT_MAP_CENTER = { lat: 37.7749, lng: -122.4194 }; // San Francisco
+const LEGEND_STOPS = tempColorStops(5).slice().reverse(); // hottest first, for top-to-bottom display
 
 export default function Home() {
   const [data, setData] = useState<WeatherResponse | null>(null);
+  const [pointLabel, setPointLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,14 +89,19 @@ export default function Home() {
     const isMobile = window.matchMedia("(max-width: 480px)").matches;
     if (!isMobile) return;
     const goldenGate = PRESETS.find((p) => p.label === "Golden Gate Bridge");
-    if (goldenGate) loadWeather(goldenGate.lat, goldenGate.lng, goldenGate.label);
+    if (goldenGate) loadWeather(goldenGate.lat, goldenGate.lng, { presetLabel: goldenGate.label });
   }, []);
 
-  async function loadWeather(targetLat: number, targetLng: number, presetLabel: string | null = null) {
+  async function loadWeather(
+    targetLat: number,
+    targetLng: number,
+    opts: { presetLabel?: string | null; displayLabel?: string } = {}
+  ) {
     setLoading(true);
     setError(null);
     setSelectedPoint({ lat: targetLat, lng: targetLng });
-    setSelectedPreset(presetLabel);
+    setSelectedPreset(opts.presetLabel ?? null);
+    setPointLabel(opts.displayLabel ?? opts.presetLabel ?? null);
     setDestData(null); // start point changed; any prior comparison is stale
     setSelectedDestPreset(null);
     try {
@@ -114,7 +126,7 @@ export default function Home() {
   }
 
   function handleMapClick(clickLat: number, clickLng: number) {
-    loadWeather(clickLat, clickLng);
+    loadWeather(clickLat, clickLng, { displayLabel: "Pinned location" });
   }
 
   function useMyLocation() {
@@ -127,7 +139,7 @@ export default function Home() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocating(false);
-        loadWeather(position.coords.latitude, position.coords.longitude);
+        loadWeather(position.coords.latitude, position.coords.longitude, { displayLabel: "My location" });
       },
       (geoError) => {
         setLocating(false);
@@ -204,12 +216,30 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <h1>Fogcast</h1>
-        <p>
-          One city with dozens of microclimates. SF changes its mind about
-          the weather every hour and every couple blocks. We&apos;re keeping
-          tabs in real-time so you don&apos;t have to.
-        </p>
+        <header className={styles.hero}>
+          <div className={styles.heroSky} aria-hidden="true">
+            <svg viewBox="0 0 400 90" preserveAspectRatio="none" className={styles.heroSkyline}>
+              <path d="M0 90 L0 55 Q100 30 200 50 T400 45 L400 90 Z" fill="var(--hill-color)" />
+              <g stroke="var(--bridge-color)" strokeWidth="3" fill="none" strokeLinecap="round">
+                <path d="M300 60 L300 20 M340 60 L340 20" />
+                <path d="M280 40 Q320 15 360 40" />
+                <path d="M300 22 L300 40 M310 26 L310 42 M320 22 L320 42 M330 26 L330 42 M340 22 L340 40" />
+              </g>
+            </svg>
+          </div>
+          <div className={styles.heroContent}>
+            <div>
+              <h1>{timeOfDayGreeting()}</h1>
+              <p>
+                Exact conditions, hyperlocal. Because the Bay has microclimates —
+                and Fogcast keeps tabs in real time so you don&apos;t have to.
+              </p>
+            </div>
+            <div className={styles.heroMascot}>
+              <WeatherIcon condition="partly-cloudy" size={64} />
+            </div>
+          </div>
+        </header>
 
         <button className={styles.primaryButton} onClick={useMyLocation} disabled={locating}>
           {locating ? "Locating…" : "Use my location"}
@@ -222,7 +252,7 @@ export default function Home() {
               className={`${styles.presetButton} ${
                 selectedPreset === preset.label ? styles.presetButtonActive : ""
               }`}
-              onClick={() => loadWeather(preset.lat, preset.lng, preset.label)}
+              onClick={() => loadWeather(preset.lat, preset.lng, { presetLabel: preset.label })}
               disabled={loading}
             >
               {preset.label}
@@ -230,13 +260,48 @@ export default function Home() {
           ))}
         </div>
 
-        <div className={styles.mapWrapper}>
-          <WeatherMap
-            center={selectedPoint ?? DEFAULT_MAP_CENTER}
-            pin={selectedPoint}
-            stations={stationMarkers}
-            onMapClick={handleMapClick}
-          />
+        <div className={styles.mapCard}>
+          <div className={styles.mapWrapper}>
+            <WeatherMap
+              center={selectedPoint ?? DEFAULT_MAP_CENTER}
+              pin={selectedPoint}
+              stations={stationMarkers}
+              onMapClick={handleMapClick}
+            />
+          </div>
+
+          <div className={styles.mapLegend}>
+            <div className={styles.legendHeader}>
+              <span className={styles.legendDot} /> Live conditions
+            </div>
+            <div className={styles.legendSubhead}>Temp (°F)</div>
+            <div className={styles.legendBarRow}>
+              <div
+                className={styles.legendBar}
+                style={{
+                  background: `linear-gradient(to bottom, ${LEGEND_STOPS.map((s) => s.color).join(", ")})`,
+                }}
+              />
+              <div className={styles.legendTicks}>
+                {LEGEND_STOPS.map((s) => (
+                  <span key={s.tempF}>{s.tempF}°</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            className={styles.mapLocateButton}
+            onClick={useMyLocation}
+            disabled={locating}
+            aria-label="Use my location"
+            title="Use my location"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2 L21 12 L12 22 L3 12 Z" strokeLinejoin="round" />
+              <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
         </div>
         <div className={styles.mapHint}>
           Click or tap anywhere on the map to drop a pin and see the weather there. Scroll or use
@@ -261,34 +326,48 @@ export default function Home() {
 
         {data && (
           <div className={`${styles.results} ${loading ? styles.resultsLoading : ""}`}>
-            <div className={styles.tempRow}>
-              <div className={styles.tempBig}>
-                {data.tempF != null ? `${data.tempF.toFixed(1)}°F` : "No data"}
+            <div className={styles.conditionsTop}>
+              <div className={styles.conditionsLeft}>
+                <WeatherIcon condition={data.conditionCode} size={56} />
+                <div>
+                  <div className={styles.tempBig}>
+                    {data.tempF != null ? `${data.tempF.toFixed(1)}°` : "—"}
+                  </div>
+                  {data.feelsLikeF != null && data.feelsLikeF !== data.tempF && (
+                    <div className={styles.feelsLike}>Feels like {data.feelsLikeF.toFixed(0)}°F</div>
+                  )}
+                  <div className={styles.freshnessBadge}>
+                    <span className={styles.freshnessDot} /> Updated just now
+                  </div>
+                </div>
               </div>
-              {data.feelsLikeF != null && data.feelsLikeF !== data.tempF && (
-                <div className={styles.feelsLike}>Feels like {data.feelsLikeF.toFixed(0)}°F</div>
-              )}
+              <div className={styles.conditionsRight}>
+                <div className={styles.pointLabel}>{pointLabel ?? "Selected location"}</div>
+                <div className={styles.elevationLabel}>
+                  Elev. {data.elevation.targetFt != null ? `${data.elevation.targetFt} ft` : "—"}
+                </div>
+                <div className={styles.windReadout}>
+                  <span className={styles.windLabel}>
+                    Wind{data.wind?.source === "ndbc" ? " (Golden Gate station)" : ""}
+                  </span>
+                  <span className={styles.windValue}>
+                    {data.wind?.speedMph != null
+                      ? `${Math.round(data.wind.speedMph)} mph${
+                          data.wind.directionDeg != null ? ` ${degreesToCompass(data.wind.directionDeg)}` : ""
+                        }`
+                      : "—"}
+                  </span>
+                  {data.wind?.gustMph != null && (
+                    <span className={styles.gustValue}>Gusting to {Math.round(data.wind.gustMph)} mph</span>
+                  )}
+                </div>
+              </div>
             </div>
+
             <div className={styles.grid}>
               <div className={styles.gridItem}>
                 <span className={styles.label}>Humidity</span>
                 <span>{data.humidityPct != null ? `${data.humidityPct}%` : "—"}</span>
-              </div>
-              <div className={styles.gridItem}>
-                <span className={styles.label}>
-                  Wind{data.wind?.source === "ndbc" ? " (Golden Gate station)" : ""}
-                </span>
-                <span>
-                  {data.wind?.speedMph != null
-                    ? `${Math.round(data.wind.speedMph)} mph${
-                        data.wind.directionDeg != null ? ` ${degreesToCompass(data.wind.directionDeg)}` : ""
-                      }`
-                    : "—"}
-                </span>
-              </div>
-              <div className={styles.gridItem}>
-                <span className={styles.label}>Gusts</span>
-                <span>{data.wind?.gustMph != null ? `${Math.round(data.wind.gustMph)} mph` : "—"}</span>
               </div>
               <div className={styles.gridItem}>
                 <span className={styles.label}>Kit</span>
@@ -297,18 +376,22 @@ export default function Home() {
             </div>
 
             {data.hourly.length > 0 && (
-              <div className={styles.hourlyStrip}>
-                {data.hourly.slice(0, 8).map((h) => (
-                  <div key={h.time} className={styles.hourlyItem}>
-                    <span className={styles.label}>
-                      {new Date(h.time).toLocaleTimeString([], { hour: "numeric" })}
-                    </span>
-                    <span>{h.tempF != null ? `${Math.round(h.tempF)}°` : "—"}</span>
-                    <span className={styles.hourlyWind}>
-                      {h.windSpeedMph != null ? `${Math.round(h.windSpeedMph)} mph` : "—"}
-                    </span>
-                  </div>
-                ))}
+              <div className={styles.hourlySection}>
+                <div className={styles.hourlySectionHeader}>Next few hours</div>
+                <div className={styles.hourlyStrip}>
+                  {data.hourly.slice(0, 8).map((h) => (
+                    <div key={h.time} className={styles.hourlyItem}>
+                      <span className={styles.label}>
+                        {new Date(h.time).toLocaleTimeString([], { hour: "numeric" })}
+                      </span>
+                      <WeatherIcon condition={h.conditionCode} size={28} />
+                      <span>{h.tempF != null ? `${Math.round(h.tempF)}°` : "—"}</span>
+                      <span className={styles.hourlyWind}>
+                        {h.windSpeedMph != null ? `${Math.round(h.windSpeedMph)} mph` : "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -366,6 +449,7 @@ export default function Home() {
               <div className={`${styles.compareGrid} ${compareLoading ? styles.resultsLoading : ""}`}>
                 <div className={styles.compareCard}>
                   <span className={styles.label}>Start</span>
+                  <WeatherIcon condition={data.conditionCode} size={32} />
                   <div className={styles.compareTemp}>
                     {data.tempF != null ? `${data.tempF.toFixed(0)}°F` : "—"}
                   </div>
@@ -376,6 +460,7 @@ export default function Home() {
                 </div>
                 <div className={styles.compareCard}>
                   <span className={styles.label}>Destination</span>
+                  <WeatherIcon condition={destData.conditionCode} size={32} />
                   <div className={styles.compareTemp}>
                     {destData.tempF != null ? `${destData.tempF.toFixed(0)}°F` : "—"}
                   </div>

@@ -6,6 +6,7 @@ import { getNwsConditions } from "@/lib/providers/nws";
 import { getElevationFt } from "@/lib/elevation";
 import { windChillF } from "@/lib/wind-chill";
 import { resolveWind } from "@/lib/wind";
+import { resolveCondition } from "@/lib/condition";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -57,10 +58,22 @@ export async function GET(request: NextRequest) {
       ? Math.round(targetElevationFt - blended.nearestStationElevationFt)
       : null;
 
+  const conditionCode = resolveCondition({
+    fogLikely: nws?.fogLikely,
+    cloudCoverPct: openMeteo?.cloudCoverPct ?? null,
+    windMph: wind.speedMph,
+  });
+
+  const hourly = (openMeteo?.hourly ?? []).map((h) => ({
+    ...h,
+    conditionCode: resolveCondition({ cloudCoverPct: h.cloudCoverPct, windMph: h.windSpeedMph }),
+  }));
+
   return NextResponse.json({
     location: { lat, lng },
     tempF,
     tempSource,
+    conditionCode,
     humidityPct: blended.humidityPct,
     aqiPm25: blended.aqiPm25,
     stationCount: blended.stationCount,
@@ -68,7 +81,7 @@ export async function GET(request: NextRequest) {
     searchRadiusMi: radiusUsedMi,
     feelsLikeF,
     wind,
-    hourly: openMeteo?.hourly ?? [],
+    hourly,
     elevation: {
       targetFt: targetElevationFt != null ? Math.round(targetElevationFt) : null,
       nearestStationFt: blended.nearestStationElevationFt,

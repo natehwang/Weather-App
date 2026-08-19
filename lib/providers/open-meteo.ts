@@ -7,6 +7,7 @@ export interface HourlyForecastPoint {
   tempF: number | null;
   windSpeedMph: number | null;
   precipProbabilityPct: number | null;
+  cloudCoverPct: number | null;
 }
 
 export interface OpenMeteoPoint {
@@ -35,6 +36,7 @@ interface OpenMeteoResponse {
     temperature_2m?: number[];
     wind_speed_10m?: number[];
     precipitation_probability?: number[];
+    cloud_cover?: number[];
   };
 }
 
@@ -43,7 +45,7 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<OpenMeteoPoint>
     latitude: String(lat),
     longitude: String(lng),
     current: "temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover",
-    hourly: "temperature_2m,wind_speed_10m,precipitation_probability",
+    hourly: "temperature_2m,wind_speed_10m,precipitation_probability,cloud_cover",
     temperature_unit: "fahrenheit",
     wind_speed_unit: "mph",
     forecast_days: "2",
@@ -82,6 +84,7 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<OpenMeteoPoint>
         tempF: json.hourly.temperature_2m?.[i] ?? null,
         windSpeedMph: json.hourly.wind_speed_10m?.[i] ?? null,
         precipProbabilityPct: json.hourly.precipitation_probability?.[i] ?? null,
+        cloudCoverPct: json.hourly.cloud_cover?.[i] ?? null,
       });
     }
   }
